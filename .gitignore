@@ -1,0 +1,33 @@
+# Git ignore for Portable AVD Launcher
+# Keep project clean and avoid checking in gigabytes of SDK images & virtual disks
+
+# Android SDK downloads, emulator, platform-tools, system-images
+sdk/
+
+# User data, AVD disk images (.qcow2, userdata.img), adb keys, snapshots
+data/
+
+# Portable OpenJDK binary
+jdk/
+
+# Runtime execution logs
+logs/
+*.log
+
+# Daemon PID files
+*.pid
+
+# Ignore user transferred files but keep directory structures
+shared/to_device/*
+!shared/to_device/.gitkeep
+shared/from_device/*
+!shared/from_device/.gitkeep
+
+# Ignore user custom kernel binaries but keep directory and guide
+kernels/*
+!kernels/.gitkeep
+!kernels/README.md
+
+# OS files
+.DS_Store
+Thumbs.db
