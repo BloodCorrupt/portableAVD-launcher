@@ -39,6 +39,7 @@ Usage:
   ./launcher.sh adb <args...>              Execute isolated adb command
   ./launcher.sh bootstrap                  Download SDK tools and accept licenses
   ./launcher.sh kvm                        Check KVM virtualization status
+  ./launcher.sh fix-perms                  Fix KVM (/dev/kvm) & GPU (/dev/dri) permissions
   ./launcher.sh help                       Show this help message
 
 Run Options:
@@ -276,6 +277,14 @@ main() {
 
         kvm)
             check_kvm
+            ;;
+
+        fix-perms)
+            if [[ "$EUID" -ne 0 ]]; then
+                log_warn "Please run with sudo to adjust device permissions: sudo ./launcher.sh fix-perms"
+            fi
+            fix_device_permissions
+            log_success "Unlocked permissions for /dev/kvm and /dev/dri for all container users!"
             ;;
 
         help|--help|-h)

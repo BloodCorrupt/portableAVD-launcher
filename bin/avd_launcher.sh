@@ -59,16 +59,26 @@ setup_audio() {
         done
 
         if [[ -n "$cookie_file" ]]; then
-            # If running as root, make sure cookie has read permission
+            # If running as root, copy cookie to /root/.config/pulse/cookie so libpulse has full access
             if [[ "$EUID" -eq 0 ]]; then
+                mkdir -p /root/.config/pulse
+                cp -f "$cookie_file" /root/.config/pulse/cookie 2>/dev/null || true
+                chmod 600 /root/.config/pulse/cookie 2>/dev/null || true
                 chmod 644 "$cookie_file" 2>/dev/null || true
+                export PULSE_COOKIE="/root/.config/pulse/cookie"
+            else
+                export PULSE_COOKIE="$cookie_file"
             fi
-            export PULSE_COOKIE="$cookie_file"
-            log_info "Configured PULSE_COOKIE: $cookie_file"
+            log_info "Configured PulseAudio cookie for authentication."
+        fi
+
+        # Make socket and parent directory accessible to all users
+        if [[ "$EUID" -eq 0 ]]; then
+            chmod 777 "$(dirname "$pulse_sock")" "$pulse_sock" 2>/dev/null || true
         fi
 
         if command -v pactl >/dev/null 2>&1 && pactl info >/dev/null 2>&1; then
-            log_success "PulseAudio audio successfully bridged!"
+            log_success "PulseAudio audio successfully bridged for root/user session!"
             return 0
         fi
     fi
