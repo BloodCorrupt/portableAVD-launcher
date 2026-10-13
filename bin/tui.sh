@@ -162,15 +162,10 @@ tui_launch_avd() {
         run_headless=true
     fi
 
-    # Audio Option (detect if PulseAudio is missing / in container)
-    local audio_default="n"
-    if ! command -v pulseaudio >/dev/null 2>&1 || ! pulseaudio --check 2>/dev/null; then
-        audio_default="y"
-    fi
-    read -r -p "Disable audio (recommended for Docker/Selkies/VPS)? (y/N) [Default: $audio_default]: " audio_choice
+    # Audio Option (Enabled by default, supported with Selkies PulseAudio)
+    read -r -p "Enable audio (PulseAudio streaming)? (Y/n) [Default: Y]: " audio_choice
     local run_no_audio=false
-    local audio_ans="${audio_choice:-$audio_default}"
-    if [[ "$audio_ans" =~ ^[Yy]$ ]]; then
+    if [[ "$audio_choice" =~ ^[Nn]$ ]]; then
         run_no_audio=true
     fi
 

@@ -19,6 +19,64 @@ get_emulator_bin() {
     echo "$SDK_DIR/emulator/emulator"
 }
 
+# Auto-configure PulseAudio routing (especially on Selkies/Docker desktop or when run as root)
+setup_audio() {
+    local no_audio="$1"
+    if [[ "$no_audio" == true ]]; then
+        return
+    fi
+
+    # Check if PulseAudio is already responsive
+    if command -v pactl >/dev/null 2>&1 && pactl info >/dev/null 2>&1; then
+        log_info "PulseAudio server detected and responsive."
+        return 0
+    fi
+
+    # Probe for active PulseAudio UNIX sockets in Selkies / container desktop
+    local pulse_sock=""
+    for s in /run/user/*/pulse/native /tmp/pulse-*/native /var/run/pulse/native; do
+        if [[ -S "$s" ]]; then
+            pulse_sock="$s"
+            break
+        fi
+    done
+
+    if [[ -z "$pulse_sock" ]]; then
+        pulse_sock="$(find /run/user /tmp /var/run -name "native" -type s 2>/dev/null | head -n 1)"
+    fi
+
+    if [[ -n "$pulse_sock" && -S "$pulse_sock" ]]; then
+        log_info "Found active PulseAudio socket: $pulse_sock"
+        export PULSE_SERVER="unix:$pulse_sock"
+
+        # Search for pulse authorization cookie
+        local cookie_file=""
+        for c in "/config/.config/pulse/cookie" "$HOME/.config/pulse/cookie" "/home/abc/.config/pulse/cookie" /run/user/*/pulse/cookie; do
+            if [[ -f "$c" ]]; then
+                cookie_file="$c"
+                break
+            fi
+        done
+
+        if [[ -n "$cookie_file" ]]; then
+            # If running as root, make sure cookie has read permission
+            if [[ "$EUID" -eq 0 ]]; then
+                chmod 644 "$cookie_file" 2>/dev/null || true
+            fi
+            export PULSE_COOKIE="$cookie_file"
+            log_info "Configured PULSE_COOKIE: $cookie_file"
+        fi
+
+        if command -v pactl >/dev/null 2>&1 && pactl info >/dev/null 2>&1; then
+            log_success "PulseAudio audio successfully bridged!"
+            return 0
+        fi
+    fi
+
+    log_warn "PulseAudio connection could not be verified automatically."
+    log_info "On Selkies desktop, you can also run launcher directly as the 'abc' user for native audio access."
+}
+
 run_avd() {
     local avd_name="$1"
     local renderer="${2:-$DEFAULT_RENDERER}"
@@ -128,10 +186,15 @@ run_avd() {
         emu_args+=("-no-snapshot-load")
     fi
 
-    # 7. Audio handling
+    # 7. Audio handling & PulseAudio bridging
     if [[ "$no_audio" == true ]]; then
         emu_args+=("-no-audio")
+    else
+        setup_audio "$no_audio"
     fi
+
+    # 8. Suppress crash consent dialogs in container / headless
+    emu_args+=("-no-metrics")
 
     # 8. QEMU VirtFS shared folder parameter
     local qemu_args=()
