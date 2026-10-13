@@ -50,6 +50,9 @@ Run Options:
   --sync-share       Enable background file sharing daemon
   --no-sync-share    Disable background file sharing daemon
   --headless         Run without GUI window (-no-window)
+  --no-audio         Disable audio emulation (recommended for containers/Selkies/VPS)
+  --virtfs           Enable QEMU 9p VirtFS parameter (requires 9p QEMU support)
+  --no-virtfs        Disable QEMU 9p VirtFS parameter (default)
   --wipe-data        Wipe user data before starting
   --cold-boot        Force cold boot (do not restore quick-boot snapshot)
 
@@ -124,6 +127,7 @@ main() {
             local headless="$HEADLESS"
             local wipe="$WIPE_DATA"
             local cold="$COLD_BOOT"
+            local no_audio="${NO_AUDIO:-false}"
 
             while [[ $# -gt 0 ]]; do
                 case "$1" in
@@ -135,13 +139,16 @@ main() {
                     --sync-share) sync=true; shift ;;
                     --no-sync-share) sync=false; shift ;;
                     --headless|-n) headless=true; shift ;;
+                    --no-audio) no_audio=true; shift ;;
+                    --virtfs) ENABLE_QEMU_VIRTFS=true; shift ;;
+                    --no-virtfs) ENABLE_QEMU_VIRTFS=false; shift ;;
                     --wipe-data) wipe=true; shift ;;
                     --cold-boot) cold=true; shift ;;
                     *) log_err "Unknown run option: $1"; exit 1 ;;
                 esac
             done
 
-            run_avd "$avd_name" "$renderer" "$cores" "$ram" "$kernel" "$append" "$sync" "$headless" "$wipe" "$cold"
+            run_avd "$avd_name" "$renderer" "$cores" "$ram" "$kernel" "$append" "$sync" "$headless" "$wipe" "$cold" "$no_audio"
             ;;
 
         create)

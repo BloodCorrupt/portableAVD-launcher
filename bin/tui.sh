@@ -162,9 +162,21 @@ tui_launch_avd() {
         run_headless=true
     fi
 
+    # Audio Option (detect if PulseAudio is missing / in container)
+    local audio_default="n"
+    if ! command -v pulseaudio >/dev/null 2>&1 || ! pulseaudio --check 2>/dev/null; then
+        audio_default="y"
+    fi
+    read -r -p "Disable audio (recommended for Docker/Selkies/VPS)? (y/N) [Default: $audio_default]: " audio_choice
+    local run_no_audio=false
+    local audio_ans="${audio_choice:-$audio_default}"
+    if [[ "$audio_ans" =~ ^[Yy]$ ]]; then
+        run_no_audio=true
+    fi
+
     echo ""
     log_info "Launching AVD '$selected_avd'..."
-    run_avd "$selected_avd" "$chosen_renderer" "$launch_cores" "$launch_ram" "$chosen_kernel" "$kernel_append" "$run_sync" "$run_headless"
+    run_avd "$selected_avd" "$chosen_renderer" "$launch_cores" "$launch_ram" "$chosen_kernel" "$kernel_append" "$run_sync" "$run_headless" false false "$run_no_audio"
     press_enter
 }
 

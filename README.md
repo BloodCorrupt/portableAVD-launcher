@@ -129,8 +129,11 @@ You can perform all actions directly from the command line:
 # Launch with Host GPU acceleration (Best performance)
 ./launcher.sh run Pixel14 --gpu host
 
-# Launch with SwiftShader (CPU software rendering - great for VPS/headless)
+# Launch with SwiftShader (CPU software rendering - great for VPS/headless/Selkies)
 ./launcher.sh run Pixel14 --gpu swiftshader_indirect
+
+# Launch in container / Selkies desktop with no audio issues
+./launcher.sh run Pixel14 --gpu swiftshader_indirect --no-audio
 
 # Launch with granular hardware overrides (override default cores & RAM)
 ./launcher.sh run Pixel14 --cores 6 --ram 8192

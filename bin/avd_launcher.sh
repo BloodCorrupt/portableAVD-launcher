@@ -30,6 +30,7 @@ run_avd() {
     local headless="${8:-$HEADLESS}"
     local wipe_data="${9:-$WIPE_DATA}"
     local cold_boot="${10:-$COLD_BOOT}"
+    local no_audio="${11:-${NO_AUDIO:-false}}"
 
     if [[ -z "$avd_name" ]]; then
         log_err "No AVD name specified."
@@ -127,11 +128,30 @@ run_avd() {
         emu_args+=("-no-snapshot-load")
     fi
 
-    # 7. QEMU VirtFS shared folder parameter
+    # 7. Audio handling
+    if [[ "$no_audio" == true ]]; then
+        emu_args+=("-no-audio")
+    fi
+
+    # 8. QEMU VirtFS shared folder parameter
     local qemu_args=()
     if [[ "$ENABLE_QEMU_VIRTFS" == true ]]; then
-        mkdir -p "$SHARED_DIR"
-        qemu_args+=("-virtfs" "local,path=${SHARED_DIR},mount_tag=${VIRTFS_MOUNT_TAG:-hostshare},security_model=passthrough,id=hostshare")
+        # Google's official Android Emulator QEMU binary does NOT compile in virtio-9p-pci.
+        # Only pass -virtfs if QEMU explicitly supports virtio-9p to prevent fatal exit:
+        # "qemu-system-x86_64: 'virtio-9p-pci' is not a valid device model name"
+        local qemu_bin="$SDK_DIR/emulator/qemu/linux-x86_64/qemu-system-x86_64"
+        local supports_9p=false
+        if [[ -x "$qemu_bin" ]] && "$qemu_bin" -device help 2>&1 | grep -q "virtio-9p"; then
+            supports_9p=true
+        fi
+
+        if [[ "$supports_9p" == true ]]; then
+            mkdir -p "$SHARED_DIR"
+            qemu_args+=("-virtfs" "local,path=${SHARED_DIR},mount_tag=${VIRTFS_MOUNT_TAG:-hostshare},security_model=passthrough,id=hostshare")
+        else
+            log_warn "QEMU VirtFS (9p) requested, but this emulator's QEMU binary does not support 'virtio-9p-pci'."
+            log_warn "Safely omitting -virtfs to prevent crash. Use ADB shared folder sync instead (fully supported)!"
+        fi
     fi
 
     # Append QEMU arguments if any exist
@@ -150,8 +170,8 @@ run_avd() {
     echo "  - RAM Size:      ${ram_mb} MB"
     echo "  - Custom Kernel: ${custom_kernel:-None (System Image Kernel)}"
     echo "  - Shared Folder: $SHARED_DIR"
-    echo "  - QEMU VirtFS:   $ENABLE_QEMU_VIRTFS (tag: ${VIRTFS_MOUNT_TAG:-hostshare})"
     echo "  - Headless:      $headless"
+    echo "  - Audio:         $([[ "$no_audio" == true ]] && echo "Disabled" || echo "Enabled")"
     echo "  - Log File:      $log_file"
     echo ""
 
