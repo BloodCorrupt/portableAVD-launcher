@@ -66,6 +66,26 @@ if [[ -f "$CONFIG_DIR/settings.conf" ]]; then
 fi
 
 # ==============================================================================
+# Portable Relocatability Fix
+# Whenever the portable folder is moved or copied to a different path/machine,
+# avdmanager .ini files contain stale absolute paths. This dynamically fixes them.
+# ==============================================================================
+fix_avd_portable_paths() {
+    if [[ -d "$ANDROID_AVD_HOME" ]]; then
+        for ini_file in "$ANDROID_AVD_HOME"/*.ini; do
+            [[ -e "$ini_file" ]] || continue
+            local avd_basename
+            avd_basename="$(basename "$ini_file" .ini)"
+            local target_avd_dir="$ANDROID_AVD_HOME/${avd_basename}.avd"
+            if [[ -d "$target_avd_dir" ]]; then
+                # Update path entry in .ini to current location
+                sed -i -E "s|^path=.*|path=${target_avd_dir}|g" "$ini_file"
+            fi
+        done
+    fi
+}
+
+# ==============================================================================
 # Container & Device Permissions Fix (KVM and Intel iGPU)
 # In Docker / Selkies containers, non-root users (like 'abc') cannot access /dev/kvm
 # or /dev/dri unless permissions are unlocked or root runs.
